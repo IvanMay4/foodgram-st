@@ -4,6 +4,20 @@ from django.db.models import UniqueConstraint
 from django.core.validators import MinValueValidator, MaxValueValidator
 
 class User(AbstractUser):
+    groups = models.ManyToManyField(
+        'auth.Group',
+        related_name='foodgram_user_groups',
+        blank=True,
+        help_text='The groups this user belongs to. A Group is a collection of permissions.',
+        related_query_name='foodgram_user',
+    )
+    user_permissions = models.ManyToManyField(
+        'auth.Permission',
+        related_name='foodgram_user_permissions',
+        blank=True,
+        help_text='Specific permissions for this user.',
+        related_query_name='foodgram_user',
+    )
     avatar = models.ImageField(upload_to='users/avatars/', blank=True, null=True)
 
     def __str__(self):
