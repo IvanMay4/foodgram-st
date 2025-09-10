@@ -10,14 +10,12 @@ router.register(r'ingredients', views.IngredientViewSet, basename='ingredient')
 
 urlpatterns = [
     path('', include(router.urls)),
-# Добавляем пути для CurrentUserViewSet, чтобы они были доступны по '/api/v1/users/me/'
     path('users/me/', views.CurrentUserViewSet.as_view({'get': 'retrieve', 'patch': 'partial_update'})),
     path('users/me/recipes/', views.CurrentUserViewSet.as_view({'get': 'recipes_list'})),
     path('users/me/subscriptions/', views.CurrentUserViewSet.as_view({'get': 'subscriptions'})),
     path('users/me/favorite/', views.CurrentUserViewSet.as_view({'get': 'favorite_recipes'})),
     path('users/me/shopping_cart/', views.CurrentUserViewSet.as_view({'get': 'shopping_cart_recipes'})),
 
-    # Дополнительные пути для рецептов (избранное, список покупок)
     path('recipes/<int:pk>/favorite/', views.RecipeViewSet.as_view({'post': 'favorite', 'delete': 'favorite'})),
     path('recipes/<int:pk>/shopping_cart/', views.RecipeViewSet.as_view({'post': 'shopping_cart', 'delete': 'shopping_cart'})),
     path('recipes/download_shopping_cart/', views.RecipeViewSet.as_view({'get': 'download_shopping_cart'})),

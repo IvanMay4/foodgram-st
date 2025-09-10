@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
     'api',
 ]
 
@@ -61,6 +62,26 @@ SIMPLE_JWT = {
     'ISSUER': None,
     'JWK_URL': None,
     'VERIFY_SIGNATURE': True,
+}
+
+
+DJOSER = {
+    'LOGIN_FIELD': 'email',
+    'USER_SERIALIZER': 'api.serializers.UserSerializer',
+    'USER_CREATE_SERIALIZER': 'api.serializers.UserCreateSerializer',
+    'LOGIN_URL': 'auth/jwt/create/',
+    'LOGOUT_URL': 'auth/jwt/logout/',
+    'ACTIVATION_URL': 'auth/users/activation/',
+    'PASSWORD_RESET_URL': 'auth/users/reset_password/',
+    'PASSWORD_RESET_CONFIRM_URL': 'auth/users/reset_password_confirm/',
+    'EMAIL_VERIFICATION_URL': 'auth/users/email/verify/',
+    'SERIALIZERS': {
+        'user': 'api.serializers.UserSerializer',
+        'user_create': 'api.serializers.UserCreateSerializer',
+        'user_profile': 'api.serializers.UserSerializer',
+        'current_user_profile': 'api.serializers.CurrentUserProfileSerializer',
+    },
+    # ...
 }
 
 

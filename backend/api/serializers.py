@@ -18,10 +18,10 @@ class UserSerializer(serializers.ModelSerializer):
             'first_name',
             'last_name',
             'email',
-            'image',
+            'avatar',
             'is_subscribed_by_user',
         )
-        read_only_fields = ('username', 'email', 'first_name', 'last_name', 'image')
+        read_only_fields = ('username', 'email', 'first_name', 'last_name', 'avatar')
 
     def get_is_subscribed_by_user(self, obj):
         request = self.context.get('request')
@@ -64,7 +64,7 @@ class CurrentUserProfileSerializer(UserSerializer):
             'first_name',
             'last_name',
             'email',
-            'image',
+            'avatar',
         )
         read_only_fields = ('username', 'email')
 
