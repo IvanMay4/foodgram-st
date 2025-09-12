@@ -1,6 +1,5 @@
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 from django.contrib.auth import get_user_model
-#from .models import User
 
 User = get_user_model()
 
@@ -15,4 +14,5 @@ class UserChangeForm(UserChangeForm):
     class Meta(UserChangeForm.Meta):
         model = User
         fields = ('username', 'email', 'first_name', 'last_name', 'avatar',
-                  'is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')
+                  'is_active', 'is_staff', 'is_superuser', 'groups',
+                  'user_permissions')

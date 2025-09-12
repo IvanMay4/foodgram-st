@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import Recipe, Ingredient, RecipeIngredient, Follow, Favorite, ShoppingCart
+from .models import (Recipe, Ingredient, RecipeIngredient,
+                     Follow, Favorite, ShoppingCart)
 from .forms import UserCreationForm, UserChangeForm
 from django.utils.html import format_html
 from django.contrib.auth import get_user_model
@@ -16,12 +17,15 @@ class IngredientAdmin(admin.ModelAdmin):
 
 @admin.register(Recipe)
 class RecipeAdmin(admin.ModelAdmin):
-    list_display = ('name', 'author', 'pub_date', 'cooking_time', 'get_ingredients', 'count_favorites')
+    list_display = ('name', 'author', 'pub_date', 'cooking_time',
+                    'get_ingredients', 'count_favorites')
     search_fields = ('name', 'author__username')
     list_filter = ('author', 'pub_date')
 
     def get_ingredients(self, obj):
-        return ", ".join([f"{ri.ingredient.name} ({ri.amount} {ri.ingredient.measurement_unit})" for ri in obj.recipe_ingredients.all()])
+        return ", ".join([f"{ri.ingredient.name} ({ri.amount} "
+                          f"{ri.ingredient.measurement_unit})"
+                          for ri in obj.recipe_ingredients.all()])
     get_ingredients.short_description = 'Ингредиенты'
 
     def count_favorites(self, obj):
@@ -65,20 +69,23 @@ class ShoppingCartAdmin(admin.ModelAdmin):
 class CustomUserAdmin(UserAdmin):
     form = UserChangeForm
     add_form = UserCreationForm
-    list_display = ('id', 'username', 'email', 'first_name', 'last_name', 'is_staff', 'is_active', 'date_joined', 'avatar')
+    list_display = ('id', 'username', 'email', 'first_name', 'last_name',
+                    'is_staff', 'is_active', 'date_joined', 'avatar')
     search_fields = ('username', 'email', 'first_name', 'last_name')
     list_filter = ('is_staff', 'is_active', 'date_joined')
 
     def avatar_display(self, obj):
         if obj.avatar:
-            return format_html('<img src="" width="50" height="50" />', obj.avatar.url)
+            return format_html('<img src="" width="50" height="50" />',
+                               obj.avatar.url)
         return "Нет аватара"
     avatar_display.short_description = 'Аватар'
 
     fieldsets = (
         (None, {'fields': ('username', 'email', 'password')}),
         ('Personal info', {'fields': ('first_name', 'last_name', 'avatar')}),
-        ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
+        ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser',
+                                    'groups', 'user_permissions')}),
         ('Important dates', {'fields': ('date_joined',)}),
     )
     readonly_fields = ('date_joined',)
