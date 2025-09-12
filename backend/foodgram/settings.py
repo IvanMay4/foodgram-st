@@ -27,6 +27,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework.authtoken',
+    'djoser',
+    'django_filters',
     'api',
 ]
 
@@ -42,12 +45,18 @@ MIDDLEWARE = [
 
 
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ),
-    'DEFAULT_PERMISSION_CLASSES': (
+    'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticatedOrReadOnly',
-    ),
+    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'api.pagination.CustomPagination',
+    'PAGE_SIZE': 6,
 }
 
 
@@ -66,22 +75,17 @@ SIMPLE_JWT = {
 
 
 DJOSER = {
-    'LOGIN_FIELD': 'email',
-    'USER_SERIALIZER': 'api.serializers.UserSerializer',
-    'USER_CREATE_SERIALIZER': 'api.serializers.UserCreateSerializer',
-    'LOGIN_URL': 'auth/jwt/create/',
-    'LOGOUT_URL': 'auth/jwt/logout/',
-    'ACTIVATION_URL': 'auth/users/activation/',
-    'PASSWORD_RESET_URL': 'auth/users/reset_password/',
-    'PASSWORD_RESET_CONFIRM_URL': 'auth/users/reset_password_confirm/',
-    'EMAIL_VERIFICATION_URL': 'auth/users/email/verify/',
     'SERIALIZERS': {
         'user': 'api.serializers.UserSerializer',
-        'user_create': 'api.serializers.UserCreateSerializer',
-        'user_profile': 'api.serializers.UserSerializer',
-        'current_user_profile': 'api.serializers.CurrentUserProfileSerializer',
+        'current_user': 'api.serializers.UserSerializer',
+        'user_create': 'djoser.serializers.UserCreateSerializer',
     },
-    # ...
+    'PERMISSIONS': {
+        'user': ['rest_framework.permissions.AllowAny'],
+        'user_list': ['rest_framework.permissions.AllowAny'],
+        'user_create': ['rest_framework.permissions.AllowAny'],
+    },
+    'HIDE_USERS': False,
 }
 
 

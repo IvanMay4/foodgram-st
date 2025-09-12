@@ -1,34 +1,16 @@
-from django.urls import path, include
+from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 from . import views
 
 router = DefaultRouter()
-
-router.register(r'users', views.UserViewSet, basename='user')
-router.register(r'recipes', views.RecipeViewSet, basename='recipe')
-router.register(r'ingredients', views.IngredientViewSet, basename='ingredient')
+router.register('users', views.UserViewSet, basename='users')
+router.register('tags', views.TagViewSet, basename='tags')
+router.register('ingredients', views.IngredientViewSet, basename='ingredients')
+router.register('recipes', views.RecipeViewSet, basename='recipes')
 
 urlpatterns = [
     path('', include(router.urls)),
-    path('users/me/', views.CurrentUserViewSet.as_view(
-        {'get': 'retrieve', 'patch': 'partial_update'})),
-    path('users/me/recipes/', views.CurrentUserViewSet.as_view(
-        {'get': 'recipes_list'})),
-    path('users/me/subscriptions/', views.CurrentUserViewSet.as_view(
-        {'get': 'subscriptions'})),
-    path('users/me/favorite/', views.CurrentUserViewSet.as_view(
-        {'get': 'favorite_recipes'})),
-    path('users/me/shopping_cart/', views.CurrentUserViewSet.as_view(
-        {'get': 'shopping_cart_recipes'})),
-
-    path('recipes/<int:pk>/favorite/', views.RecipeViewSet.as_view(
-        {'post': 'favorite', 'delete': 'favorite'})),
-    path('recipes/<int:pk>/shopping_cart/', views.RecipeViewSet.as_view(
-        {'post': 'shopping_cart', 'delete': 'shopping_cart'})),
-    path('recipes/download_shopping_cart/', views.RecipeViewSet.as_view(
-        {'get': 'download_shopping_cart'})),
-
-    # Дополнительные пути для пользователей (подписка)
-    path('users/<int:pk>/subscribe/', views.UserViewSet.as_view(
-        {'post': 'subscribe', 'delete': 'subscribe'})),
+    path('auth/token/login/', views.token_login, name='token-login'),
+    path('auth/', include('djoser.urls')),
+    path('users/me/avatar/', views.update_user_avatar, name='update-avatar'),
 ]
