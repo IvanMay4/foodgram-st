@@ -2,19 +2,19 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
-from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.decorators import action, api_view
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from .models import (
-    Favorite, Ingredient, Recipe, ShoppingCart, Tag, Subscribe, User
+    Favorite, Ingredient, Recipe, ShoppingCart, Subscribe, User
 )
 from .filters import IngredientFilter, RecipeFilter
 from .pagination import CustomPagination
 from .permissions import IsAuthorOrReadOnly
 from .serializers import (
     IngredientSerializer, RecipeReadSerializer, RecipeWriteSerializer,
-    ShortRecipeSerializer, SubscribeSerializer, TagSerializer, UserSerializer
+    ShortRecipeSerializer, SubscribeSerializer, UserSerializer
 )
 
 
@@ -91,13 +91,6 @@ class UserViewSet(viewsets.ModelViewSet):
             )
             subscribe.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-class TagViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Tag.objects.all()
-    serializer_class = TagSerializer
-    permission_classes = (AllowAny,)
-    pagination_class = None
 
 
 class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
@@ -203,39 +196,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
         return response
 
 
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def token_login(request):
-    """Простой endpoint для тестирования"""
-    print("Simple login called")
-
-    # Просто возвращаем тестовый токен
-    from rest_framework.authtoken.models import Token
-    from django.contrib.auth import get_user_model
-
-    User = get_user_model()
-
-    # Получаем или создаем пользователя
-    user, created = User.objects.get_or_create(
-        username='testuser',
-        defaults={
-            'email': 'test@example.com',
-            'password': 'testpassword123'
-        }
-    )
-
-    if created:
-        user.set_password('testpassword123')
-        user.save()
-
-    # Создаем токен
-    token, created = Token.objects.get_or_create(user=user)
-
-    return Response({
-        'auth_token': token.key
-    }, status=200)
-
-
 @api_view(['PUT'])
 def update_user_avatar(request):
     if not request.user.is_authenticated:
@@ -257,3 +217,93 @@ def update_user_avatar(request):
     return Response({
         'avatar': request.user.avatar.url
     }, status=status.HTTP_200_OK)
+
+
+
+# class CustomObtainAuthToken(ObtainAuthToken):
+#     serializer_class = EmailAuthTokenSerializer
+#
+#     def post(self, request, *args, **kwargs):
+#         serializer = self.serializer_class(data=request.data,
+#                                          context={'request': request})
+#         serializer.is_valid(raise_exception=True)
+#         user = serializer.validated_data['user']
+#         token, created = Token.objects.get_or_create(user=user)
+#         return Response({
+#             'auth_token': token.key,
+#         })
+# class CustomAuthToken(ObtainAuthToken):
+#     def post(self, request, *args, **kwargs):
+#         serializer = self.serializer_class(data=request.data,
+#                                            context={'request': request})
+#         # if not serializer.is_valid():
+#         #     return Response(
+#         #         {'error': 'Неверные учетные данные'},
+#         #         status=status.HTTP_400_BAD_REQUEST
+#         #     )
+#         #serializer.is_valid()
+#         username = request.data.get('username')
+#         email = request.data.get('email')
+#         password = request.data.get('password')
+#         print(username)
+#         print(email)
+#         print(password)
+#         if password is None:
+#             return Response({
+#                 'error': 'Отсутствует пароль'
+#             }, status=400)
+#         if username is not None:
+#             print('Username auth')
+#             user = get_object_or_404(User, username=username)
+#         elif email is not None:
+#             user = get_object_or_404(User, email=email)
+#         else:
+#             print('None auth')
+#             return Response({
+#                 'error': 'Отсутствуют данные для аудентификации'
+#             }, status=400)
+#         #user = serializer.validated_data['user']
+#         print('user = ' + user.username)
+#         print('user.password = ' + user.password)
+#         user_test = User.objects.get({'password': password})
+#         print(user_test)
+#         if user.password != password:
+#             return Response({
+#                 'error': 'Неверный пароль'
+#             }, status=400)
+#         token, created = Token.objects.get_or_create(user=user)
+#         return Response({
+#             'auth_token': token.key,
+#         })
+#
+#
+# class LoginView(APIView):
+#     """
+#     View для входа с поддержкой различных комбинаций полей
+#     """
+#     permission_classes = [AllowAny]
+#
+#     def post(self, request, *args, **kwargs):
+#         serializer = MultiFieldAuthSerializer(
+#             data=request.data,
+#             context={'request': request}
+#         )
+#
+#         if serializer.is_valid():
+#             user = serializer.validated_data['user']
+#
+#             # Создание или получение токена
+#             token, created = Token.objects.get_or_create(user=user)
+#
+#             # Сессионная аутентификация (опционально)
+#             login(request, user)
+#
+#             return Response({
+#                 'token': token.key,
+#                 'user_id': user.pk,
+#                 'username': user.username,
+#                 'email': user.email,
+#                 'message': 'Login successful'
+#             }, status=status.HTTP_200_OK)
+#
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

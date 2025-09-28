@@ -5,8 +5,7 @@ from rest_framework import serializers
 from rest_framework.authtoken.models import Token
 
 from .models import (
-    Favorite, Ingredient, Recipe, RecipeIngredient, ShoppingCart, Tag,
-    Subscribe
+    Favorite, Ingredient, Recipe, RecipeIngredient, ShoppingCart, Subscribe
 )
 from django.contrib.auth import get_user_model
 User = get_user_model()
@@ -50,12 +49,6 @@ class Base64ImageField(serializers.ImageField):
         return super().to_internal_value(data)
 
 
-class TagSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Tag
-        fields = ('id', 'name', 'color', 'slug')
-
-
 class IngredientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ingredient
@@ -76,7 +69,6 @@ class RecipeIngredientSerializer(serializers.ModelSerializer):
 
 class RecipeReadSerializer(serializers.ModelSerializer):
     author = UserSerializer(read_only=True)
-    tags = TagSerializer(many=True, read_only=True)
     ingredients = RecipeIngredientSerializer(
         many=True, source='recipe_ingredients'
     )
@@ -105,16 +97,13 @@ class RecipeReadSerializer(serializers.ModelSerializer):
 
 
 class RecipeWriteSerializer(serializers.ModelSerializer):
-    tags = serializers.PrimaryKeyRelatedField(
-        many=True, queryset=Tag.objects.all()
-    )
     ingredients = RecipeIngredientSerializer(many=True)
     image = Base64ImageField()
 
     class Meta:
         model = Recipe
         fields = (
-            'ingredients', 'tags', 'image', 'name', 'text', 'cooking_time'
+            'ingredients', 'image', 'name', 'text', 'cooking_time'
         )
 
     def validate_ingredients(self, value):
@@ -132,18 +121,6 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
             ingredients_list.append(ingredient)
         return value
 
-    def validate_tags(self, value):
-        if not value:
-            raise serializers.ValidationError('Выберите хотя бы один тег')
-        tags_list = []
-        for tag in value:
-            if tag in tags_list:
-                raise serializers.ValidationError(
-                    'Теги не должны повторяться'
-                )
-            tags_list.append(tag)
-        return value
-
     def create_ingredients(self, ingredients, recipe):
         RecipeIngredient.objects.bulk_create([
             RecipeIngredient(
@@ -155,18 +132,14 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         ingredients = validated_data.pop('ingredients')
-        tags = validated_data.pop('tags')
         recipe = Recipe.objects.create(**validated_data)
-        recipe.tags.set(tags)
         self.create_ingredients(ingredients, recipe)
         return recipe
 
     def update(self, instance, validated_data):
         ingredients = validated_data.pop('ingredients')
-        tags = validated_data.pop('tags')
         instance = super().update(instance, validated_data)
         instance.tags.clear()
-        instance.tags.set(tags)
         instance.ingredients.clear()
         self.create_ingredients(ingredients, instance)
         return instance
@@ -219,3 +192,131 @@ class CustomTokenSerializer(serializers.ModelSerializer):
         model = Token
         fields = ('auth_token',)
         read_only_fields = ('auth_token',)
+
+
+# class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+#     email = serializers.EmailField(required=False)
+#     username = serializers.CharField(required=False)
+#
+#     def validate(self, attrs):
+#         email = attrs.get('email')
+#         username = attrs.get('username')
+#         password = attrs.get('password')
+#
+#         # Аутентифицируем по email или username
+#         if email:
+#             user = authenticate(username=email, password=password)
+#         elif username:
+#             user = authenticate(username=username, password=password)
+#         else:
+#             raise serializers.ValidationError(_('Must include "email" or "username".'))
+#
+#         if not user:
+#             raise serializers.ValidationError(_('Invalid credentials.'))
+#
+#         refresh = self.get_token(user)
+#         data = {'refresh': str(refresh), 'access': str(refresh.access_token)}
+#         return data
+
+
+# class EmailAuthTokenSerializer(serializers.Serializer):
+#     email = serializers.CharField(label=_("Email"))
+#     password = serializers.CharField(
+#         label=_("Password"),
+#         style={'input_type': 'password'},
+#         trim_whitespace=False
+#     )
+#
+#     def validate(self, attrs):
+#         email = attrs.get('email')
+#         password = attrs.get('password')
+#
+#         if email and password:
+#             # Аутентифицируем по email как по username
+#             user = authenticate(request=self.context.get('request'),
+#                               email=email, password=password)
+#             if not user:
+#                 msg = _('Unable to log in with provided credentials.')
+#                 raise serializers.ValidationError(msg, code='authorization')
+#         else:
+#             msg = _('Must include "email" and "password".')
+#             raise serializers.ValidationError(msg, code='authorization')
+#
+#         attrs['user'] = user
+#         return attrs
+
+
+# class MultiFieldAuthSerializer(serializers.Serializer):
+#     """
+#     Сериализатор для аутентификации с различными полями
+#     """
+#     username = serializers.CharField(required=False, allow_blank=True)
+#     email = serializers.EmailField(required=False, allow_blank=True)
+#     password = serializers.CharField(
+#         style={'input_type': 'password'},
+#         trim_whitespace=False
+#     )
+#
+#     def validate(self, attrs):
+#         username = attrs.get('username')
+#         email = attrs.get('email')
+#         password = attrs.get('password')
+#
+#         # Проверка, что указано хотя бы одно поле для идентификации
+#         if not username and not email:
+#             raise serializers.ValidationError(
+#                 _('Must include either "username" or "email".')
+#             )
+#
+#         # Аутентификация пользователя
+#         user = authenticate(
+#             request=self.context.get('request'),
+#             username=username,
+#             email=email,
+#             password=password
+#         )
+#
+#         if not user:
+#             raise serializers.ValidationError(
+#                 _('Unable to log in with provided credentials.')
+#             )
+#
+#         if not user.is_active:
+#             raise serializers.ValidationError(
+#                 _('User account is disabled.')
+#             )
+#
+#         attrs['user'] = user
+#         return attrs
+
+
+# class CustomTokenCreateSerializer(TokenCreateSerializer):
+#
+#     def validate(self, attrs):
+#         password = attrs.get("password")
+#         params = {"password": password}
+#
+#         # Пробуем аутентифицироваться по email
+#         if attrs.get("email"):
+#             params["email"] = attrs.get("email")
+#         else:
+#             params["username"] = attrs.get("username")
+#
+#         self.user = authenticate(
+#             request=self.context.get("request"), **params
+#         )
+#
+#         if not self.user:
+#             self.user = None
+#
+#         if self.user and not self.user.is_active:
+#             raise serializers.ValidationError(
+#                 _("User account is disabled.")
+#             )
+#
+#         if self.user:
+#             return attrs
+#
+#         raise serializers.ValidationError(
+#             _("Unable to log in with provided credentials.")
+#         )

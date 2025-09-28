@@ -35,31 +35,6 @@ class User(AbstractUser):
         return self.username
 
 
-class Tag(models.Model):
-    name = models.CharField(
-        max_length=200,
-        unique=True,
-        verbose_name='Название тега'
-    )
-    color = models.CharField(
-        max_length=7,
-        unique=True,
-        verbose_name='Цвет в HEX'
-    )
-    slug = models.SlugField(
-        max_length=200,
-        unique=True,
-        verbose_name='Уникальный слаг'
-    )
-
-    class Meta:
-        verbose_name = 'Тег'
-        verbose_name_plural = 'Теги'
-
-    def __str__(self):
-        return self.name
-
-
 class Ingredient(models.Model):
     name = models.CharField(
         max_length=200,
@@ -101,11 +76,6 @@ class Recipe(models.Model):
         Ingredient,
         through='RecipeIngredient',
         verbose_name='Ингредиенты'
-    )
-    tags = models.ManyToManyField(
-        Tag,
-        related_name='recipes',
-        verbose_name='Теги'
     )
     cooking_time = models.PositiveSmallIntegerField(
         validators=[MinValueValidator(1)],
