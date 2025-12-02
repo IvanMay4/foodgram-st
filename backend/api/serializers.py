@@ -1,6 +1,7 @@
 import base64
 from django.core.files.base import ContentFile
 from django.shortcuts import get_object_or_404
+from djoser.serializers import UserCreateSerializer as DjoserUserCreateSerializer
 from rest_framework import serializers
 from rest_framework.authtoken.models import Token
 
@@ -11,21 +12,45 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 
 
-class UserSerializer(serializers.ModelSerializer):
+# class UserSerializer(serializers.ModelSerializer):
+#     is_subscribed = serializers.SerializerMethodField()
+#     avatar = serializers.SerializerMethodField()
+#
+#     class Meta:
+#         model = User
+#         fields = ['id', 'email', 'username', 'first_name', 'last_name',
+#                   'is_subscribed', 'avatar']
+#
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         if (self.context.get('request')
+#                 and self.context['request'].method == 'POST'):
+#             self.fields.pop('is_subscribed', None)
+#             self.fields.pop('avatar', None)
+#
+
+class UserCreateSerializer(DjoserUserCreateSerializer):
+    username = serializers.CharField(required=True)
+    first_name = serializers.CharField(required=True)
+    last_name = serializers.CharField(required=True)
+
+    class Meta(DjoserUserCreateSerializer.Meta):
+        model = User
+        fields = ('id', 'email', 'username', 'first_name', 'last_name', 'password')
+
+    def validate(self, attrs):
+        if 'username' in attrs and not attrs['username']:
+            raise serializers.ValidationError({"username": "This field is required."})
+        return attrs
+
+
+class CustomUserSerializer(serializers.ModelSerializer):
     is_subscribed = serializers.SerializerMethodField()
-    avatar = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'username', 'first_name', 'last_name',
-                  'is_subscribed', 'avatar']
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if (self.context.get('request')
-                and self.context['request'].method == 'POST'):
-            self.fields.pop('is_subscribed', None)
-            self.fields.pop('avatar', None)
+        fields = ('id', 'email', 'username', 'first_name',
+                  'last_name', 'is_subscribed')
 
     def get_is_subscribed(self, obj):
         request = self.context.get('request')
@@ -68,7 +93,7 @@ class RecipeIngredientSerializer(serializers.ModelSerializer):
 
 
 class RecipeReadSerializer(serializers.ModelSerializer):
-    author = UserSerializer(read_only=True)
+    author = CustomUserSerializer(read_only=True)
     ingredients = RecipeIngredientSerializer(
         many=True, source='recipe_ingredients'
     )
