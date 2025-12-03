@@ -15,7 +15,8 @@ from .pagination import CustomPagination
 from .permissions import IsAuthorOrReadOnly
 from .serializers import (
     IngredientSerializer, RecipeReadSerializer, RecipeWriteSerializer,
-    ShortRecipeSerializer, SubscribeSerializer, UserCreateSerializer, CustomUserSerializer
+    ShortRecipeSerializer, SubscribeSerializer, UserCreateSerializer,
+    CustomUserSerializer
 )
 
 
@@ -94,23 +95,77 @@ from .serializers import (
 #             subscribe.delete()
 #             return Response(status=status.HTTP_204_NO_CONTENT)
 class UserViewSet(DjoserUserViewSet):
-    """
-    ViewSet для работы с пользователями.
-    Наследуется от Djoser UserViewSet.
-    """
     queryset = User.objects.all()
+    pagination_class = CustomPagination
+    permission_classes = (AllowAny,)
 
     def get_serializer_class(self):
-        """
-        Возвращает соответствующий сериализатор в зависимости от действия.
-        """
         if self.action == 'create':
-            from .serializers import UserCreateSerializer
             return UserCreateSerializer
-        elif self.action == 'me':
-            return CustomUserSerializer
         return CustomUserSerializer
 
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve', 'create']:
+            return [AllowAny()]
+        return [IsAuthenticated()]
+
+    @action(
+        detail=False,
+        methods=['get'],
+        permission_classes=[IsAuthenticated]
+    )
+    def me(self, request):
+        serializer = self.get_serializer(request.user)
+        return Response(serializer.data)
+
+    @action(
+        detail=False,
+        methods=['get'],
+        permission_classes=[IsAuthenticated],
+        url_path='subscriptions'
+    )
+    def subscriptions(self, request):
+        user = request.user
+        queryset = Subscribe.objects.filter(user=user)
+        pages = self.paginate_queryset(queryset)
+        serializer = SubscribeSerializer(
+            pages, many=True, context={'request': request}
+        )
+        return self.get_paginated_response(serializer.data)
+
+    @action(
+        detail=True,
+        methods=['post', 'delete'],
+        permission_classes=[IsAuthenticated]
+    )
+    def subscribe(self, request, pk=None):
+        author = get_object_or_404(User, id=pk)
+        user = request.user
+
+        if request.method == 'POST':
+            if user == author:
+                return Response(
+                    {'errors': 'Нельзя подписаться на самого себя'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            if Subscribe.objects.filter(user=user, author=author).exists():
+                return Response(
+                    {'errors': 'Вы уже подписаны на этого автора'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            subscribe = Subscribe.objects.create(user=user, author=author)
+            serializer = SubscribeSerializer(
+                subscribe, context={'request': request}
+            )
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        if request.method == 'DELETE':
+            subscribe = get_object_or_404(
+                Subscribe, user=user, author=author
+            )
+            subscribe.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
     # @action(
     #     detail=True,
     #     methods=['post', 'delete'],

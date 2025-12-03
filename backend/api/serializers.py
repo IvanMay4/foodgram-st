@@ -1,7 +1,9 @@
 import base64
 from django.core.files.base import ContentFile
 from django.shortcuts import get_object_or_404
-from djoser.serializers import UserCreateSerializer as DjoserUserCreateSerializer
+from djoser.serializers import (UserCreateSerializer
+                                as DjoserUserCreateSerializer)
+from django.core.validators import RegexValidator
 from rest_framework import serializers
 from rest_framework.authtoken.models import Token
 
@@ -30,27 +32,43 @@ User = get_user_model()
 #
 
 class UserCreateSerializer(DjoserUserCreateSerializer):
-    username = serializers.CharField(required=True)
-    first_name = serializers.CharField(required=True)
-    last_name = serializers.CharField(required=True)
+    username = serializers.CharField(
+        required=True,
+        max_length=150,
+        min_length=1,
+        validators=[RegexValidator(regex=r'^[\w.@+-]+\Z')],
+    )
+    first_name = serializers.CharField(
+        required=True,
+        max_length=150,
+        min_length=1,
+    )
+    last_name = serializers.CharField(
+        required=True,
+        max_length=150,
+        min_length=1,
+    )
 
     class Meta(DjoserUserCreateSerializer.Meta):
         model = User
-        fields = ('id', 'email', 'username', 'first_name', 'last_name', 'password')
+        fields = ('id', 'email', 'username', 'first_name',
+                  'last_name', 'password')
 
     def validate(self, attrs):
         if 'username' in attrs and not attrs['username']:
-            raise serializers.ValidationError({"username": "This field is required."})
+            raise serializers.ValidationError(
+                {"username": "This field is required."})
         return attrs
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
     is_subscribed = serializers.SerializerMethodField()
+    avatar = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = ('id', 'email', 'username', 'first_name',
-                  'last_name', 'is_subscribed')
+                  'last_name', 'is_subscribed', 'avatar')
 
     def get_is_subscribed(self, obj):
         request = self.context.get('request')
@@ -234,7 +252,8 @@ class CustomTokenSerializer(serializers.ModelSerializer):
 #         elif username:
 #             user = authenticate(username=username, password=password)
 #         else:
-#             raise serializers.ValidationError(_('Must include "email" or "username".'))
+#             raise serializers.ValidationError(
+#                 _('Must include "email" or "username".'))
 #
 #         if not user:
 #             raise serializers.ValidationError(_('Invalid credentials.'))
