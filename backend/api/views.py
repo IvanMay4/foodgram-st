@@ -16,7 +16,7 @@ from .permissions import IsAuthorOrReadOnly
 from .serializers import (
     IngredientSerializer, RecipeReadSerializer, RecipeWriteSerializer,
     ShortRecipeSerializer, SubscribeSerializer, UserCreateSerializer,
-    CustomUserSerializer
+    CustomUserSerializer, SetPasswordSerializer
 )
 
 
@@ -108,6 +108,18 @@ class UserViewSet(DjoserUserViewSet):
         if self.action in ['list', 'retrieve', 'create']:
             return [AllowAny()]
         return [IsAuthenticated()]
+
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
+    def set_password(self, request):
+        user = request.user
+        serializer = SetPasswordSerializer(data=request.data, context={'request': request})
+
+        if serializer.is_valid():
+            user.set_password(serializer.validated_data['new_password'])
+            user.save()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(
         detail=False,
@@ -272,7 +284,13 @@ class RecipeViewSet(viewsets.ModelViewSet):
         permission_classes=[IsAuthenticated]
     )
     def favorite(self, request, pk=None):
-        recipe = get_object_or_404(Recipe, id=pk)
+        try:
+            recipe = Recipe.objects.get(id=pk)
+        except (Recipe.DoesNotExist, ValueError):
+            return Response(
+                {'error': 'Рецепт не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
         user = request.user
 
         if request.method == 'POST':
