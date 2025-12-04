@@ -221,9 +221,15 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         RecipeIngredient.objects.bulk_create(recipe_ingredients)
 
     def create(self, validated_data):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            raise serializers.ValidationError(
+                'Пользователь должен быть аутентифицирован.'
+            )
+
         ingredients = validated_data.pop('ingredients')
         recipe = Recipe.objects.create(
-            author=self.context['request'].user,
+            author=request.user,
             **validated_data
         )
         self.create_ingredients(ingredients, recipe)
