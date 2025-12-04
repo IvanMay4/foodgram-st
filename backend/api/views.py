@@ -107,13 +107,11 @@ class UserViewSet(DjoserUserViewSet):
             subscription = Subscribe.objects.filter(user=user, author=author).first()
 
             if not subscription:
-                # Если подписка не найдена, возвращаем 400
                 return Response(
                     {'errors': 'Вы не подписаны на этого пользователя'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Удаляем подписку
             subscription.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -219,7 +217,17 @@ class RecipeViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         if request.method == 'DELETE':
-            favorite = get_object_or_404(Favorite, user=user, recipe=recipe)
+            favorite = Favorite.objects.filter(
+                user=user,
+                recipe=recipe
+            ).first()
+
+            if not favorite:
+                return Response(
+                    {'errors': 'Рецепт не был добавлен в избранное'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
             favorite.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -243,9 +251,17 @@ class RecipeViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         if request.method == 'DELETE':
-            shopping_cart = get_object_or_404(
-                ShoppingCart, user=user, recipe=recipe
-            )
+            shopping_cart = ShoppingCart.objects.filter(
+                user=user,
+                recipe=recipe
+            ).first()
+
+            if not shopping_cart:
+                return Response(
+                    {'errors': 'Рецепт не был добавлен в корзину'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
             shopping_cart.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
 
