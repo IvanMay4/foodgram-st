@@ -96,6 +96,32 @@ class Base64ImageField(serializers.ImageField):
         return super().to_internal_value(data)
 
 
+class AvatarUpdateSerializer(serializers.ModelSerializer):
+    avatar = Base64ImageField(required=True)
+
+    class Meta:
+        model = User
+        fields = ('avatar',)
+
+    def update(self, instance, validated_data):
+        instance.avatar = validated_data.get('avatar', instance.avatar)
+        instance.save()
+        return instance
+
+
+class AvatarSerializer(serializers.ModelSerializer):
+    avatar = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ('avatar',)
+
+    def get_avatar(self, obj):
+        if obj.avatar:
+            return obj.avatar.url
+        return None
+
+
 class IngredientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ingredient
@@ -146,15 +172,20 @@ class RecipeReadSerializer(serializers.ModelSerializer):
 class RecipeWriteSerializer(serializers.ModelSerializer):
     ingredients = serializers.ListField(
         child=serializers.DictField(),
-        write_only=True
+        write_only=True,
+        required=True
     )
     image = Base64ImageField()
+    author = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Recipe
         fields = (
-            'ingredients', 'image', 'name', 'text', 'cooking_time'
+            'ingredients', 'image', 'name', 'text', 'cooking_time', 'author'
         )
+
+    def get_author(self, obj):
+        return CustomUserSerializer(obj.author, context=self.context).data
 
     def validate_ingredients(self, value):
         if not value:
@@ -237,12 +268,21 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         return recipe
 
     def update(self, instance, validated_data):
-        ingredients = validated_data.pop('ingredients', None)
-        if ingredients is not None:
-            instance.ingredients.clear()
-            self.create_ingredients(ingredients, instance)
+        if 'ingredients' not in validated_data:
+            raise serializers.ValidationError({
+                'ingredients': ['Это поле обязательно.']
+            })
 
-        return super().update(instance, validated_data)
+        ingredients = validated_data.pop('ingredients')
+
+        instance.ingredients.clear()
+        self.create_ingredients(ingredients, instance)
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+        return instance
 
     def to_representation(self, instance):
         return RecipeReadSerializer(instance, context=self.context).data

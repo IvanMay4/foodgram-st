@@ -16,7 +16,7 @@ from .permissions import IsAuthorOrReadOnly
 from .serializers import (
     IngredientSerializer, RecipeReadSerializer, RecipeWriteSerializer,
     ShortRecipeSerializer, SubscribeSerializer, UserCreateSerializer,
-    CustomUserSerializer, SetPasswordSerializer
+    CustomUserSerializer, SetPasswordSerializer, AvatarSerializer, AvatarUpdateSerializer
 )
 
 
@@ -125,16 +125,25 @@ class UserViewSet(DjoserUserViewSet):
         user = request.user
 
         if request.method in ['PUT', 'PATCH']:
-            if 'avatar' not in request.FILES:
+            serializer = AvatarUpdateSerializer(
+                user,
+                data=request.data,
+                partial=(request.method == 'PATCH')
+            )
+
+            if serializer.is_valid():
+                serializer.save()
+                return Response({
+                    'avatar': user.avatar.url if user.avatar else ''
+                }, status=status.HTTP_200_OK)
+
+            if 'avatar' not in serializer.errors:
                 return Response(
                     {'error': 'Файл аватара не найден'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            user.avatar = request.FILES['avatar']
-            user.save()
-            serializer = self.get_serializer(user)
-            return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         elif request.method == 'DELETE':
             if user.avatar:
