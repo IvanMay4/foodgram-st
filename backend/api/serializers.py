@@ -5,6 +5,7 @@ from djoser.serializers import (UserCreateSerializer
 from django.core.validators import RegexValidator
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
+from rest_framework.exceptions import AuthenticationFailed
 
 from .models import (
     Favorite, Ingredient, Recipe, RecipeIngredient, ShoppingCart, Subscribe
@@ -63,7 +64,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
     def get_avatar(self, obj):
         if obj.avatar:
             return obj.avatar.url
-        return None
+        return ''
 
 
 class SetPasswordSerializer(serializers.Serializer):
@@ -223,7 +224,7 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         request = self.context.get('request')
         if not request or not request.user.is_authenticated:
-            raise serializers.ValidationError(
+            raise AuthenticationFailed(
                 'Пользователь должен быть аутентифицирован.'
             )
 
@@ -262,13 +263,26 @@ class SubscribeSerializer(serializers.ModelSerializer):
     is_subscribed = serializers.SerializerMethodField()
     recipes = serializers.SerializerMethodField()
     recipes_count = serializers.ReadOnlyField(source='author.recipes.count')
+    avatar = serializers.SerializerMethodField()
 
     class Meta:
         model = Subscribe
         fields = (
             'id', 'email', 'username', 'first_name', 'last_name',
-            'is_subscribed', 'recipes', 'recipes_count'
+            'is_subscribed', 'recipes', 'recipes_count', 'avatar'
         )
+
+    def get_avatar(self, obj):
+        # Если у вас есть поле avatar в модели User
+        if hasattr(obj, 'avatar') and obj.avatar:
+            return obj.avatar.url
+
+        # Или если avatar хранится в связанной модели Profile
+        if hasattr(obj, 'profile') and obj.profile.avatar:
+            return obj.profile.avatar.url
+
+        # Возвращаем None или URL дефолтного аватара
+        return None
 
     def get_is_subscribed(self, obj):
         return Subscribe.objects.filter(

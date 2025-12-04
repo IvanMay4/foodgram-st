@@ -104,10 +104,17 @@ class UserViewSet(DjoserUserViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         if request.method == 'DELETE':
-            subscribe = get_object_or_404(
-                Subscribe, user=user, author=author
-            )
-            subscribe.delete()
+            subscription = Subscribe.objects.filter(user=user, author=author).first()
+
+            if not subscription:
+                # Если подписка не найдена, возвращаем 400
+                return Response(
+                    {'errors': 'Вы не подписаны на этого пользователя'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Удаляем подписку
+            subscription.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(
@@ -165,41 +172,22 @@ class RecipeViewSet(viewsets.ModelViewSet):
             return RecipeReadSerializer
         return RecipeWriteSerializer
 
-    @action(detail=True, methods=['get'], url_path='get-link')
+    @action(
+        detail=True,
+        methods=['GET'],
+        url_path='get-link',
+        permission_classes=[AllowAny]
+    )
     def get_link(self, request, pk=None):
-        """
-        Эндпоинт для получения короткой ссылки на рецепт
-        """
-        print(f"=== DEBUG ===")
-        print(f"Method: {request.method}")
-        print(f"URL: {request.path}")
-        print(f"User: {request.user}")
-        print(f"Authenticated: {request.user.is_authenticated}")
-        print(f"pk from URL: {pk}")
-        print(f"ViewSet: {self.__class__.__name__}")
-        print(f"Action: {self.action}")
-        print(f"=== END DEBUG ===")
-
-        # Проверяем аутентификацию
-        if not request.user.is_authenticated:
-            return Response(
-                {'detail': 'Authentication credentials were not provided.'},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-
-        # Ищем рецепт
         try:
             recipe = Recipe.objects.get(pk=pk)
-            print(f"Recipe found: {recipe.id} - {recipe.name}")
         except Recipe.DoesNotExist:
-            print(f"Recipe with pk={pk} not found!")
             return Response(
                 {'detail': 'Not found.'},
                 status=status.HTTP_404_NOT_FOUND
             )
 
         short_link = f"/api/recipes/{recipe.id}/"
-        print(f"Returning short-link: {short_link}")
 
         return Response({
             'short-link': short_link
