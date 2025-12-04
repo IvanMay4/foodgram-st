@@ -9,8 +9,5 @@ router.register('recipes', views.RecipeViewSet, basename='recipes')
 
 urlpatterns = [
     path('', include(router.urls)),
-    #path('auth/', include('djoser.urls')),
     path('auth/', include('djoser.urls.authtoken')),
-    #path('auth/token/login/', obtain_auth_token),
-    path('users/me/avatar/', views.update_user_avatar),
 ]

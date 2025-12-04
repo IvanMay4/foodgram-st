@@ -3,7 +3,7 @@ from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from djoser.views import UserViewSet as DjoserUserViewSet
 from rest_framework import status, viewsets
-from rest_framework.decorators import action, api_view
+from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
@@ -20,82 +20,8 @@ from .serializers import (
 )
 
 
-# class UserViewSet(viewsets.ModelViewSet):
-#     queryset = User.objects.all().order_by('id')
-#     pagination_class = CustomPagination
-#     serializer_class = UserSerializer
-#     permission_classes = (AllowAny,)
-#
-#     def get_serializer_context(self):
-#         context = super().get_serializer_context()
-#         context['request'] = self.request
-#         print(context)
-#         return context
-#
-#     def get_permissions(self):
-#         if self.action in ['list', 'retrieve', 'create']:
-#             return [AllowAny()]
-#         return [IsAuthenticated()]
-#
-#     @action(
-#         detail=False,
-#         methods=['get'],
-#         permission_classes=[IsAuthenticated]
-#     )
-#     def me(self, request):
-#         serializer = self.get_serializer(request.user)
-#         return Response(serializer.data)
-#
-#     @action(
-#         detail=False,
-#         methods=['get'],
-#         permission_classes=[IsAuthenticated],
-#         url_path='subscriptions'
-#     )
-#     def subscriptions(self, request):
-#         user = request.user
-#         queryset = Subscribe.objects.filter(user=user)
-#         pages = self.paginate_queryset(queryset)
-#         serializer = SubscribeSerializer(
-#             pages, many=True, context={'request': request}
-#         )
-#         return self.get_paginated_response(serializer.data)
-#
-#     @action(
-#         detail=True,
-#         methods=['post', 'delete'],
-#         permission_classes=[IsAuthenticated]
-#     )
-#     def subscribe(self, request, pk=None):
-#         author = get_object_or_404(User, id=pk)
-#         user = request.user
-#
-#         if request.method == 'POST':
-#             if user == author:
-#                 return Response(
-#                     {'errors': 'Нельзя подписаться на самого себя'},
-#                     status=status.HTTP_400_BAD_REQUEST
-#                 )
-#             if Subscribe.objects.filter(user=user, author=author).exists():
-#                 return Response(
-#                     {'errors': 'Вы уже подписаны на этого автора'},
-#                     status=status.HTTP_400_BAD_REQUEST
-#                 )
-#
-#             subscribe = Subscribe.objects.create(user=user, author=author)
-#             serializer = SubscribeSerializer(
-#                 subscribe, context={'request': request}
-#             )
-#             return Response(serializer.data, status=status.HTTP_201_CREATED)
-#
-#         if request.method == 'DELETE':
-#             subscribe = get_object_or_404(
-#                 Subscribe, user=user, author=author
-#             )
-#             subscribe.delete()
-#             return Response(status=status.HTTP_204_NO_CONTENT)
 class UserViewSet(DjoserUserViewSet):
-    queryset = User.objects.all()
+    queryset = User.objects.all().order_by('id')
     pagination_class = CustomPagination
     permission_classes = (AllowAny,)
 
@@ -109,10 +35,13 @@ class UserViewSet(DjoserUserViewSet):
             return [AllowAny()]
         return [IsAuthenticated()]
 
-    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
+    @action(detail=False, methods=['post'],
+            permission_classes=[IsAuthenticated])
     def set_password(self, request):
         user = request.user
-        serializer = SetPasswordSerializer(data=request.data, context={'request': request})
+        serializer = SetPasswordSerializer(
+            data=request.data, context={'request': request}
+        )
 
         if serializer.is_valid():
             user.set_password(serializer.validated_data['new_password'])
@@ -138,7 +67,7 @@ class UserViewSet(DjoserUserViewSet):
     )
     def subscriptions(self, request):
         user = request.user
-        queryset = Subscribe.objects.filter(user=user)
+        queryset = Subscribe.objects.filter(user=user).order_by('id')
         pages = self.paginate_queryset(queryset)
         serializer = SubscribeSerializer(
             pages, many=True, context={'request': request}
@@ -150,8 +79,9 @@ class UserViewSet(DjoserUserViewSet):
         methods=['post', 'delete'],
         permission_classes=[IsAuthenticated]
     )
-    def subscribe(self, request, pk=None):
-        author = get_object_or_404(User, id=pk)
+    def subscribe(self, request, **kwargs):
+        author_id = kwargs.get('pk') or kwargs.get('id')
+        author = get_object_or_404(User, id=author_id)
         user = request.user
 
         if request.method == 'POST':
@@ -168,7 +98,8 @@ class UserViewSet(DjoserUserViewSet):
 
             subscribe = Subscribe.objects.create(user=user, author=author)
             serializer = SubscribeSerializer(
-                subscribe, context={'request': request}
+                subscribe,
+                context={'request': request}
             )
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -178,83 +109,39 @@ class UserViewSet(DjoserUserViewSet):
             )
             subscribe.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
-    # @action(
-    #     detail=True,
-    #     methods=['post', 'delete'],
-    #     permission_classes=[IsAuthenticated]
-    # )
-    # def subscribe(self, request, id=None):
-    #     """
-    #     Подписаться или отписаться от пользователя.
-    #     """
-    #     user = request.user
-    #     author = get_object_or_404(User, id=id)
-    #
-    #     if request.method == 'POST':
-    #         # Проверяем, не пытается ли пользователь подписаться на себя
-    #         if user == author:
-    #             return Response(
-    #                 {'errors': 'Нельзя подписаться на самого себя'},
-    #                 status=status.HTTP_400_BAD_REQUEST
-    #             )
-    #
-    #         # Проверяем, существует ли уже подписка
-    #         if Follow.objects.filter(user=user, author=author).exists():
-    #             return Response(
-    #                 {'errors': 'Вы уже подписаны на этого пользователя'},
-    #                 status=status.HTTP_400_BAD_REQUEST
-    #             )
-    #
-    #         # Создаем подписку
-    #         Follow.objects.create(user=user, author=author)
-    #
-    #         # Возвращаем данные автора
-    #         serializer = FollowSerializer(
-    #             author,
-    #             context={'request': request}
-    #         )
-    #         return Response(serializer.data, status=status.HTTP_201_CREATED)
-    #
-    #     elif request.method == 'DELETE':
-    #         # Удаляем подписку, если она существует
-    #         subscription = Follow.objects.filter(user=user, author=author)
-    #         if subscription.exists():
-    #             subscription.delete()
-    #             return Response(status=status.HTTP_204_NO_CONTENT)
-    #
-    #         return Response(
-    #             {'errors': 'Вы не подписаны на этого пользователя'},
-    #             status=status.HTTP_400_BAD_REQUEST
-    #         )
 
-    # @action(
-    #     detail=False,
-    #     permission_classes=[IsAuthenticated]
-    # )
-    # def subscriptions(self, request):
-    #     """
-    #     Получить список подписок текущего пользователя.
-    #     """
-    #     user = request.user
-    #     # Получаем всех авторов, на которых подписан пользователь
-    #     authors = User.objects.filter(following__user=user)
-    #
-    #     # Пагинация
-    #     page = self.paginate_queryset(authors)
-    #     if page is not None:
-    #         serializer = FollowSerializer(
-    #             page,
-    #             many=True,
-    #             context={'request': request}
-    #         )
-    #         return self.get_paginated_response(serializer.data)
-    #
-    #     serializer = FollowSerializer(
-    #         authors,
-    #         many=True,
-    #         context={'request': request}
-    #     )
-    #     return Response(serializer.data)
+    @action(
+        detail=False,
+        methods=['put', 'patch', 'delete'],
+        permission_classes=[IsAuthenticated],
+        url_path='me/avatar'
+    )
+    def avatar(self, request):
+        user = request.user
+
+        if request.method in ['PUT', 'PATCH']:
+            if 'avatar' not in request.FILES:
+                return Response(
+                    {'error': 'Файл аватара не найден'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            user.avatar = request.FILES['avatar']
+            user.save()
+            serializer = self.get_serializer(user)
+            return Response(serializer.data)
+
+        elif request.method == 'DELETE':
+            if user.avatar:
+                user.avatar.delete(save=False)
+                user.avatar = None
+                user.save()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        return Response(
+            {'error': 'Метод не поддерживается'},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED
+        )
 
 
 class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
@@ -344,7 +231,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
         user = request.user
         shopping_cart = user.shopping_cart.all()
 
-        # Собираем ингредиенты из всех рецептов в корзине
         ingredients = {}
         for item in shopping_cart:
             for recipe_ingredient in item.recipe.recipe_ingredients.all():
@@ -355,7 +241,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
                 else:
                     ingredients[key] = recipe_ingredient.amount
 
-        # Формируем текстовый файл
         shopping_list = "Список покупок:\n\n"
         for (name, unit), amount in ingredients.items():
             shopping_list += f"{name} ({unit}) - {amount}\n"
@@ -364,115 +249,3 @@ class RecipeViewSet(viewsets.ModelViewSet):
         response['Content-Disposition'] = \
             'attachment; filename="shopping_list.txt"'
         return response
-
-
-@api_view(['PUT'])
-def update_user_avatar(request):
-    if not request.user.is_authenticated:
-        return Response(
-            {'error': 'Authentication required'},
-            status=status.HTTP_401_UNAUTHORIZED
-        )
-
-    if 'avatar' not in request.FILES:
-        return Response(
-            {'error': 'Avatar file is required'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
-    avatar_file = request.FILES['avatar']
-    request.user.avatar = avatar_file
-    request.user.save()
-
-    return Response({
-        'avatar': request.user.avatar.url
-    }, status=status.HTTP_200_OK)
-
-
-# class CustomObtainAuthToken(ObtainAuthToken):
-#     serializer_class = EmailAuthTokenSerializer
-#
-#     def post(self, request, *args, **kwargs):
-#         serializer = self.serializer_class(data=request.data,
-#                                          context={'request': request})
-#         serializer.is_valid(raise_exception=True)
-#         user = serializer.validated_data['user']
-#         token, created = Token.objects.get_or_create(user=user)
-#         return Response({
-#             'auth_token': token.key,
-#         })
-# class CustomAuthToken(ObtainAuthToken):
-#     def post(self, request, *args, **kwargs):
-#         serializer = self.serializer_class(data=request.data,
-#                                            context={'request': request})
-#         # if not serializer.is_valid():
-#         #     return Response(
-#         #         {'error': 'Неверные учетные данные'},
-#         #         status=status.HTTP_400_BAD_REQUEST
-#         #     )
-#         #serializer.is_valid()
-#         username = request.data.get('username')
-#         email = request.data.get('email')
-#         password = request.data.get('password')
-#         print(username)
-#         print(email)
-#         print(password)
-#         if password is None:
-#             return Response({
-#                 'error': 'Отсутствует пароль'
-#             }, status=400)
-#         if username is not None:
-#             print('Username auth')
-#             user = get_object_or_404(User, username=username)
-#         elif email is not None:
-#             user = get_object_or_404(User, email=email)
-#         else:
-#             print('None auth')
-#             return Response({
-#                 'error': 'Отсутствуют данные для аудентификации'
-#             }, status=400)
-#         #user = serializer.validated_data['user']
-#         print('user = ' + user.username)
-#         print('user.password = ' + user.password)
-#         user_test = User.objects.get({'password': password})
-#         print(user_test)
-#         if user.password != password:
-#             return Response({
-#                 'error': 'Неверный пароль'
-#             }, status=400)
-#         token, created = Token.objects.get_or_create(user=user)
-#         return Response({
-#             'auth_token': token.key,
-#         })
-#
-#
-# class LoginView(APIView):
-#     """
-#     View для входа с поддержкой различных комбинаций полей
-#     """
-#     permission_classes = [AllowAny]
-#
-#     def post(self, request, *args, **kwargs):
-#         serializer = MultiFieldAuthSerializer(
-#             data=request.data,
-#             context={'request': request}
-#         )
-#
-#         if serializer.is_valid():
-#             user = serializer.validated_data['user']
-#
-#             # Создание или получение токена
-#             token, created = Token.objects.get_or_create(user=user)
-#
-#             # Сессионная аутентификация (опционально)
-#             login(request, user)
-#
-#             return Response({
-#                 'token': token.key,
-#                 'user_id': user.pk,
-#                 'username': user.username,
-#                 'email': user.email,
-#                 'message': 'Login successful'
-#             }, status=status.HTTP_200_OK)
-#
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -10,25 +10,9 @@ from .models import (
     Favorite, Ingredient, Recipe, RecipeIngredient, ShoppingCart, Subscribe
 )
 from django.contrib.auth import get_user_model
+
 User = get_user_model()
 
-
-# class UserSerializer(serializers.ModelSerializer):
-#     is_subscribed = serializers.SerializerMethodField()
-#     avatar = serializers.SerializerMethodField()
-#
-#     class Meta:
-#         model = User
-#         fields = ['id', 'email', 'username', 'first_name', 'last_name',
-#                   'is_subscribed', 'avatar']
-#
-#     def __init__(self, *args, **kwargs):
-#         super().__init__(*args, **kwargs)
-#         if (self.context.get('request')
-#                 and self.context['request'].method == 'POST'):
-#             self.fields.pop('is_subscribed', None)
-#             self.fields.pop('avatar', None)
-#
 
 class UserCreateSerializer(DjoserUserCreateSerializer):
     username = serializers.CharField(
@@ -89,15 +73,15 @@ class SetPasswordSerializer(serializers.Serializer):
     def validate(self, attrs):
         user = self.context['request'].user
 
-        # Проверка текущего пароля
         if not user.check_password(attrs['current_password']):
-            raise serializers.ValidationError({"current_password": "Wrong password."})
+            raise serializers.ValidationError(
+                {"current_password": "Wrong password."})
 
-        # Валидация нового пароля
         try:
             validate_password(attrs['new_password'], user)
         except Exception as e:
-            raise serializers.ValidationError({"new_password": list(e.messages)})
+            raise serializers.ValidationError(
+                {"new_password": list(e.messages)})
 
         return attrs
 
@@ -159,7 +143,10 @@ class RecipeReadSerializer(serializers.ModelSerializer):
 
 
 class RecipeWriteSerializer(serializers.ModelSerializer):
-    ingredients = RecipeIngredientSerializer(many=True)
+    ingredients = serializers.ListField(
+        child=serializers.DictField(),
+        write_only=True
+    )
     image = Base64ImageField()
 
     class Meta:
@@ -175,12 +162,12 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
             )
 
         ingredients = []
-        for item in value:
-            # ПРОВЕРЬТЕ, КАКОЙ КЛЮЧ ИСПОЛЬЗУЕТСЯ!
-            # Возможно 'ingredient' вместо 'id'
-            ingredient_id = item.get('id') or item.get('ingredient')
+        ingredient_ids = set()
 
-            if not ingredient_id:
+        for item in value:
+            ingredient_id = item.get('id')
+
+            if ingredient_id is None:
                 raise serializers.ValidationError(
                     'Укажите ID ингредиента.'
                 )
@@ -192,19 +179,28 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
                     f'Ингредиент с ID {ingredient_id} не существует.'
                 )
 
-            # Проверка количества
             amount = item.get('amount')
-            if not amount or int(amount) <= 0:
+            if amount is None:
                 raise serializers.ValidationError(
-                    'Укажите положительное количество ингредиента.'
+                    f'Укажите количество для ингредиента с ID {ingredient_id}.'
                 )
 
-            # Проверка на дубликаты
-            if ingredient_id in [i.get('id') or i.get('ingredient') for i in ingredients]:
+            try:
+                amount = int(amount)
+                if amount <= 0:
+                    raise ValueError
+            except (ValueError, TypeError):
+                raise serializers.ValidationError(
+                    f'Количество для ингредиента с ID {ingredient_id}'
+                    f' должно быть положительным числом.'
+                )
+
+            if ingredient_id in ingredient_ids:
                 raise serializers.ValidationError(
                     f'Ингредиент {ingredient.name} указан более одного раза.'
                 )
 
+            ingredient_ids.add(ingredient_id)
             ingredients.append({
                 'ingredient': ingredient,
                 'amount': amount
@@ -213,26 +209,33 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         return ingredients
 
     def create_ingredients(self, ingredients, recipe):
-        RecipeIngredient.objects.bulk_create([
-            RecipeIngredient(
-                recipe=recipe,
-                ingredient_id=ingredient['id'],
-                amount=ingredient['amount']
-            ) for ingredient in ingredients
-        ])
+        recipe_ingredients = []
+        for ingredient_data in ingredients:
+            recipe_ingredients.append(
+                RecipeIngredient(
+                    recipe=recipe,
+                    ingredient=ingredient_data['ingredient'],
+                    amount=ingredient_data['amount']
+                )
+            )
+        RecipeIngredient.objects.bulk_create(recipe_ingredients)
 
     def create(self, validated_data):
         ingredients = validated_data.pop('ingredients')
-        recipe = Recipe.objects.create(**validated_data)
+        recipe = Recipe.objects.create(
+            author=self.context['request'].user,
+            **validated_data
+        )
         self.create_ingredients(ingredients, recipe)
         return recipe
 
     def update(self, instance, validated_data):
-        ingredients = validated_data.pop('ingredients')
-        instance = super().update(instance, validated_data)
-        instance.ingredients.clear()
-        self.create_ingredients(ingredients, instance)
-        return instance
+        ingredients = validated_data.pop('ingredients', None)
+        if ingredients is not None:
+            instance.ingredients.clear()
+            self.create_ingredients(ingredients, instance)
+
+        return super().update(instance, validated_data)
 
     def to_representation(self, instance):
         return RecipeReadSerializer(instance, context=self.context).data
