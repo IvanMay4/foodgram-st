@@ -16,7 +16,7 @@ from .permissions import IsAuthorOrReadOnly
 from .serializers import (
     IngredientSerializer, RecipeReadSerializer, RecipeWriteSerializer,
     ShortRecipeSerializer, SubscribeSerializer, UserCreateSerializer,
-    CustomUserSerializer, SetPasswordSerializer, AvatarSerializer, AvatarUpdateSerializer
+    CustomUserSerializer, SetPasswordSerializer, AvatarSerializer
 )
 
 
@@ -104,7 +104,9 @@ class UserViewSet(DjoserUserViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         if request.method == 'DELETE':
-            subscription = Subscribe.objects.filter(user=user, author=author).first()
+            subscription = Subscribe.objects.filter(
+                user=user, author=author
+            ).first()
 
             if not subscription:
                 return Response(
@@ -125,7 +127,7 @@ class UserViewSet(DjoserUserViewSet):
         user = request.user
 
         if request.method in ['PUT', 'PATCH']:
-            serializer = AvatarUpdateSerializer(
+            serializer = AvatarSerializer(
                 user,
                 data=request.data,
                 partial=(request.method == 'PATCH')
@@ -143,7 +145,8 @@ class UserViewSet(DjoserUserViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(serializer.errors,
+                            status=status.HTTP_400_BAD_REQUEST)
 
         elif request.method == 'DELETE':
             if user.avatar:

@@ -96,7 +96,7 @@ class Base64ImageField(serializers.ImageField):
         return super().to_internal_value(data)
 
 
-class AvatarUpdateSerializer(serializers.ModelSerializer):
+class AvatarSerializer(serializers.ModelSerializer):
     avatar = Base64ImageField(required=True)
 
     class Meta:
@@ -107,19 +107,6 @@ class AvatarUpdateSerializer(serializers.ModelSerializer):
         instance.avatar = validated_data.get('avatar', instance.avatar)
         instance.save()
         return instance
-
-
-class AvatarSerializer(serializers.ModelSerializer):
-    avatar = serializers.SerializerMethodField()
-
-    class Meta:
-        model = User
-        fields = ('avatar',)
-
-    def get_avatar(self, obj):
-        if obj.avatar:
-            return obj.avatar.url
-        return None
 
 
 class IngredientSerializer(serializers.ModelSerializer):
@@ -313,15 +300,10 @@ class SubscribeSerializer(serializers.ModelSerializer):
         )
 
     def get_avatar(self, obj):
-        # Если у вас есть поле avatar в модели User
         if hasattr(obj, 'avatar') and obj.avatar:
             return obj.avatar.url
-
-        # Или если avatar хранится в связанной модели Profile
         if hasattr(obj, 'profile') and obj.profile.avatar:
             return obj.profile.avatar.url
-
-        # Возвращаем None или URL дефолтного аватара
         return None
 
     def get_is_subscribed(self, obj):
