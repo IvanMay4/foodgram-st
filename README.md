@@ -18,6 +18,11 @@ ALLOWED_HOSTS=localhost,127.0.0.1,backend,0.0.0.0
 DEBUG=False
 ```
 
+Загрузка образа
+```bash
+docker pull ivanmay/foodgram-backend:latest
+```
+
 Запустить docker compose:
 ```bash
 docker-compose up -d --build
@@ -32,6 +37,5 @@ docker-compose exec -d backend python manage.py runserver
 ```bash
 python backend/manage.py migrate
 python backend/manage.py load_ingredients
-python backend/manage.py runserver 0.0.0.0:8001
-# 0.0.0.0:8001 для того, чтобы не было конфликтов нескольких runserver
+python backend/manage.py runserver
 ```
